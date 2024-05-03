@@ -21,6 +21,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webelement import WebElement
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from mail import buildService, verifyCode
 
@@ -63,9 +65,15 @@ class Robot:
     ele_pwd = self.browser.find_element(By.NAME, "password")
     ele_usr.send_keys(self.username)
     ele_pwd.send_keys(self.password)
+
+    old_url = str(self.browser.current_url)
     self.browser.find_element(By.ID, "clogs-captcha-button").click()
 
-    if "noip.com/2fa/verify" in self.browser.current_url:           
+    # wait = WebDriverWait(self.browser, 30)
+    # wait.until(lambda driver: driver.current_url != old_url)
+
+    if "noip.com/2fa/verify" in self.browser.current_url:
+      print("2FA Procedure")
       attempts = 0
       now = int(time.time())
       service = buildService(self.token)
@@ -97,7 +105,7 @@ class Robot:
       input2fa = self.browser.find_element(By.ID, "otp-input").find_elements(By.TAG_NAME, "input")
       
       for index, element in enumerate(input2fa):
-          element.send_keys(str(code)[index])
+        element.send_keys(str(code)[index])
 
       self.browser.find_element(By.NAME, "submit").click()
       # self.browser.save_screenshot("debug2.png")
@@ -191,7 +199,7 @@ def main():
 
   parser.add_argument("-u", "--username")
   parser.add_argument("-p", "--password")
-  parser.add_argument("-t", "--token-path", default=".\\token.json")
+  parser.add_argument("-t", "--token-path", default="token.json")
   parser.add_argument("-e", "--environment-variable", action='store_true')
   parser.add_argument("-r", "--max-retry", default=30)
 
@@ -204,7 +212,7 @@ def main():
     if args.password ^ args.username: 
       parser.error("Please provide both username and password")
     
-  token = args.token_path if not (args.environment_variable) else None
+  token = args.token_path if not args.environment_variable else None
   username = args.username if (args.username) else os.environ.get("username")
   password = args.password if (args.password) else os.environ.get("password")
 
