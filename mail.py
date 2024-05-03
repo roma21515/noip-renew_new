@@ -35,14 +35,18 @@ def buildService(token: str) -> Resource:
   # The file token.json stores the user's access and refresh tokens, and is
   # created automatically when the authorization flow completes for the first
   # time.
-  if os.path.exists(token):
-    logging.info(f"File: \"{token}\" found, using it to login...")
-    creds = Credentials.from_authorized_user_file(token, SCOPES)
 
-  elif os.environ.get("token", False):
+  if not token: 
+    if os.environ.get("token", False):
+      return logging.error("Environment variable: \"token\" not found")
+    
     logging.info("Environment variable: \"token\" found, using it to login...")
     data = json.loads(os.environ["token"])
     creds = Credentials.from_authorized_user_info(data, SCOPES)
+  
+  elif os.path.exists(token):
+    logging.info(f"File: \"{token}\" found, using it to login...")
+    creds = Credentials.from_authorized_user_file(token, SCOPES)
 
   # If there are no (valid) credentials available, let the user log in.
   if not creds or not creds.valid:
