@@ -116,10 +116,14 @@ class Robot:
   def updateHosts(self):
     count = 0
 
+    print(self.browser.current_url)
+    
     self.__openHostsPage()
     time.sleep(1)
     iteration = 1
     next_renewal = []
+
+    print(self.browser.current_url)
 
     hosts = self.fetchHosts()
     for host in hosts:
