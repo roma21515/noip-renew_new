@@ -3,11 +3,9 @@ import logging
 import os.path
 import re, time
 
-from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build, Resource
-from googleapiclient.errors import HttpError
 
 logging.basicConfig(
   level = logging.INFO,
@@ -43,18 +41,15 @@ def buildService(token: str) -> Resource:
     logging.info("Environment variable: \"token\" found, using it to login...")
     data = json.loads(os.environ["token"])
     creds = Credentials.from_authorized_user_info(data, SCOPES)
+
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds: return logging.error("Token is not available")
+    if not creds.valid: return logging.error("Token is invaild")
   
   elif os.path.exists(token):
     logging.info(f"File: \"{token}\" found, using it to login...")
     creds = Credentials.from_authorized_user_file(token, SCOPES)
 
-  # If there are no (valid) credentials available, let the user log in.
-  if not creds:
-    return logging.error("Token is not available")
-
-  if not creds.valid:
-    return logging.error("Token is invaild")
-  
   # Call the Gmail API
   return build("gmail", "v1", credentials=creds)
 
