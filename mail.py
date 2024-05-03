@@ -37,7 +37,7 @@ def buildService(token: str) -> Resource:
   # time.
 
   if not token: 
-    if os.environ.get("token", False):
+    if not os.environ.get("token"):
       return logging.error("Environment variable: \"token\" not found")
     
     logging.info("Environment variable: \"token\" found, using it to login...")
