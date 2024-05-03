@@ -66,14 +66,13 @@ class Robot:
     ele_usr.send_keys(self.username)
     ele_pwd.send_keys(self.password)
 
-    old_url = str(self.browser.current_url)
-    self.browser.find_element(By.ID, "clogs-captcha-button").click()
+    # old_url = str(self.browser.current_url)
+    # self.browser.find_element(By.ID, "clogs-captcha-button").click()
 
     # wait = WebDriverWait(self.browser, 30)
     # wait.until(lambda driver: driver.current_url != old_url)
 
     if "noip.com/2fa/verify" in self.browser.current_url:
-      print("2FA Procedure")
       attempts = 0
       now = int(time.time())
       service = buildService(self.token)
