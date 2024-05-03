@@ -85,7 +85,7 @@ class Robot:
         code = verifyCode(service, now)
 
         if code:
-          logging.info(f"The verification code is {code}")
+          logging.info(f"Successfully got verification code !")
           break
         
         time.sleep(5) # Prevent too many requests 
