@@ -49,9 +49,11 @@ def buildService(token: str) -> Resource:
     creds = Credentials.from_authorized_user_file(token, SCOPES)
 
   # If there are no (valid) credentials available, let the user log in.
-  if not creds or not creds.valid:
-    logging.error("Token is not available or invaild")
-    return None
+  if not creds:
+    return logging.error("Token is not available")
+
+  if not creds.valid:
+    return logging.error("Token is invaild")
   
   # Call the Gmail API
   return build("gmail", "v1", credentials=creds)
