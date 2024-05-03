@@ -112,9 +112,7 @@ class Robot:
       
   def updateHosts(self):
     count = 0
-
     self.__openHostsPage()
-    
 
     iteration = 1
     next_renewal = []
@@ -140,8 +138,12 @@ class Robot:
   def __openHostsPage(self):
     logging.info(f"Opening {HOST_URL}...")
     self.browser.get(HOST_URL)
-    wait = WebDriverWait(self.browser, 30)
-    wait.until(EC.presence_of_element_located((By.CLASS_NAME,'table-striped-row')))
+    try:
+      wait = WebDriverWait(self.browser, 30)
+      wait.until(EC.presence_of_element_located((By.CLASS_NAME,'table-striped-row')))
+    except TimeoutException:
+      print(self.browser.current_url)
+
     # print("I wanna close")
     # time.sleep(1000)
 
