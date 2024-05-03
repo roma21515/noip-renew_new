@@ -28,7 +28,7 @@ def loginFlow() -> None:
   return
   
 
-def buildService(token: str = "") -> Resource:
+def buildService(token: str) -> Resource:
   """Shows basic usage of the Gmail API. Lists the user's Gmail labels."""
 
   creds = None
@@ -36,8 +36,8 @@ def buildService(token: str = "") -> Resource:
   # created automatically when the authorization flow completes for the first
   # time.
   if os.path.exists(token):
-    logging.info("File: \"token.json\" found, using it to login...")
-    creds = Credentials.from_authorized_user_file("token.json", SCOPES)
+    logging.info(f"File: \"{token}\" found, using it to login...")
+    creds = Credentials.from_authorized_user_file(token, SCOPES)
 
   elif os.environ.get("token", False):
     logging.info("Environment variable: \"token\" found, using it to login...")
