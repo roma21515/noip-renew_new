@@ -13,188 +13,204 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
+import re, os, sys, time
+from argparse import ArgumentParser
+
 from selenium import webdriver
+from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
-from datetime import date
-from datetime import timedelta
-import time
-import sys
-import os
-import re
-import base64
-import subprocess
+from selenium.webdriver.remote.webelement import WebElement
 
-class Logger:
-    def __init__(self, level):
-        self.level = 0 if level is None else level
+from mail import buildService, verifyCode
 
-    def log(self, msg, level=None):
-        self.time_string_formatter = time.strftime('%Y/%m/%d %H:%M:%S', time.localtime(time.time()))
-        self.level = self.level if level is None else level
-        if self.level > 0:
-            print(f"[{self.time_string_formatter}] - {msg}")
-
+LOGIN_URL = "https://www.noip.com/login"
+HOST_URL = "https://my.noip.com/dynamic-dns"
+USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:64.0) Gecko/20100101 Firefox/64.0"
 
 class Robot:
 
-    USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:64.0) Gecko/20100101 Firefox/64.0"
-    LOGIN_URL = "https://www.noip.com/login"
-    HOST_URL = "https://my.noip.com/#!/dynamic-dns"
+  def __init__(self, username: str, password: str, token: str):
+    self.token = token
+    self.username = username
+    self.password = password
+    self.browser = self.init_browser()
 
-    def __init__(self, username, password, debug):
-        self.debug = debug
-        self.username = username
-        self.password = password
-        self.browser = self.init_browser()
-        self.logger = Logger(debug)
+  @staticmethod
+  def init_browser():
+    options = webdriver.ChromeOptions()
+    #added for Raspbian Buster 4.0+ versions. Check https://www.raspberrypi.org/forums/viewtopic.php?t=258019 for reference.
+    options.add_argument("disable-features=VizDisplayCompositor")
+    # options.add_argument("headless")
+    options.add_argument("no-sandbox") # need when run in docker
+    # options.add_argument("window-size=1200x800")
+    options.add_argument(f"user-agent={USER_AGENT}")
+    if 'https_proxy' in os.environ:
+      options.add_argument("proxy-server=" + os.environ['https_proxy'])
+    browser = webdriver.Chrome(options=options)
+    # browser.delete_all_cookies()
+    browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
+    return browser
 
-    @staticmethod
-    def init_browser():
-        options = webdriver.ChromeOptions()
-        #added for Raspbian Buster 4.0+ versions. Check https://www.raspberrypi.org/forums/viewtopic.php?t=258019 for reference.
-        options.add_argument("disable-features=VizDisplayCompositor")
-        options.add_argument("headless")
-        options.add_argument("no-sandbox")  # need when run in docker
-        options.add_argument("window-size=1200x800")
-        options.add_argument(f"user-agent={Robot.USER_AGENT}")
-        if 'https_proxy' in os.environ:
-            options.add_argument("proxy-server=" + os.environ['https_proxy'])
-        browser = webdriver.Chrome(options=options)
-        browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
-        return browser
+  def login(self):
+    logging.info(f"Opening {LOGIN_URL}...")
+    self.browser.get(LOGIN_URL)
 
-    def login(self):
-        self.logger.log(f"Opening {Robot.LOGIN_URL}...")
-        self.browser.get(Robot.LOGIN_URL)
-        if self.debug > 1:
-            self.browser.save_screenshot("debug1.png")
+    # self.browser.save_screenshot("debug1.png")
 
-        self.logger.log("Logging in...")
-        ele_usr = self.browser.find_element_by_name("username")
-        ele_pwd = self.browser.find_element_by_name("password")
-        ele_usr.send_keys(self.username)
-        ele_pwd.send_keys(base64.b64decode(self.password).decode('utf-8'))
-        self.browser.find_element_by_name("Login").click()
-        if self.debug > 1:
-            time.sleep(1)
-            self.browser.save_screenshot("debug2.png")
+    logging.info("Logging in...")
+    ele_usr = self.browser.find_element(By.NAME ,"username")
+    ele_pwd = self.browser.find_element(By.NAME, "password")
+    ele_usr.send_keys(self.username)
+    ele_pwd.send_keys(self.password)
+    self.browser.find_element(By.ID, "clogs-captcha-button").click()
 
-    def update_hosts(self):
-        count = 0
+    if "noip.com/2fa/verify" in self.browser.current_url:           
+      attempts = 0
+      now = int(time.time())
+      service = buildService(self.token)
+      
+      if not service:
+        return logging.error(f"Gmail API service not being built, script will end here.")
+      
+      logging.info(f"Gmail API service built, start fetching emails...")
 
-        self.open_hosts_page()
-        time.sleep(1)
-        iteration = 1
-        next_renewal = []
+      while True:
+        attempts += 1
+        if attempts > 30:
+          logging.warning(f"Failed to get verification code (timeout)")
+          return None
+        
+        logging.info(f"Attempting to get verification code from Gmail API ({attempts})")
+        code = verifyCode(service, now)
 
-        hosts = self.get_hosts()
-        for host in hosts:
-            host_link = self.get_host_link(host, iteration) # This is for if we wanted to modify our Host IP.
-            host_button = self.get_host_button(host, iteration) # This is the button to confirm our free host
-            host_name = host_link.text
-            expiration_days = self.get_host_expiration_days(host, iteration)
-            next_renewal.append(expiration_days)
-            self.logger.log(f"{host_name} expires in {str(expiration_days)} days")
-            if expiration_days < 7:
-                self.update_host(host_button, host_name)
-                count += 1
-            iteration += 1
-        self.browser.save_screenshot("results.png")
-        self.logger.log(f"Confirmed hosts: {count}", 2)
-        nr = min(next_renewal) - 6
-        today = date.today() + timedelta(days=nr)
-        day = str(today.day)
-        month = str(today.month)
-        subprocess.call(['/usr/local/bin/noip-renew-skd.sh', day, month, "True"])
-        return True
+        if code:
+          logging.info(f"The verification code is {code}")
+          break
+        
+        time.sleep(5) # Prevent too many requests 
+        
+        # Click "resend email" button if it's enabled
+        resendBtn = self.browser.find_element(By.ID, "resend")
+        if (resendBtn.is_enabled()) : resendBtn.click()
 
-    def open_hosts_page(self):
-        self.logger.log(f"Opening {Robot.HOST_URL}...")
-        try:
-            self.browser.get(Robot.HOST_URL)
-        except TimeoutException as e:
-            self.browser.save_screenshot("timeout.png")
-            self.logger.log(f"Timeout: {str(e)}")
+      input2fa = self.browser.find_element(By.ID, "otp-input").find_elements(By.TAG_NAME, "input")
+      
+      for index, element in enumerate(input2fa):
+          element.send_keys(str(code)[index])
 
-    def update_host(self, host_button, host_name):
-        self.logger.log(f"Updating {host_name}")
-        host_button.click()
-        time.sleep(3)
-        intervention = False
-        try:
-            if self.browser.find_elements_by_xpath("//h2[@class='big']")[0].text == "Upgrade Now":
-                intervention = True
-        except:
-            pass
+      self.browser.find_element(By.NAME, "submit").click()
+      # self.browser.save_screenshot("debug2.png")
+      
+  def updateHosts(self):
+    count = 0
 
-        if intervention:
-            raise Exception("Manual intervention required. Upgrade text detected.")
+    self.__openHostsPage()
+    time.sleep(1)
+    iteration = 1
+    next_renewal = []
 
-        self.browser.save_screenshot(f"{host_name}_success.png")
+    hosts = self.fetchHosts()
+    for host in hosts:
+      hostLink = self.__fetchHostLink(host, iteration) # This is for if we wanted to modify our Host IP.
+      hostBtn = self.__fetchHostButton(host, iteration) # This is the button to confirm our free host
+      expDays = self.__fetchHostExpirationDays(host, iteration)
+      hostName = hostLink.text
+      next_renewal.append(expDays)
+      logging.info(f"{hostName} expires in {str(expDays)} days")
 
-    @staticmethod
-    def get_host_expiration_days(host, iteration):
-        try:
-            host_remaining_days = host.find_element_by_xpath(".//a[@class='no-link-style']").text
-        except:
-            host_remaining_days = "Expires in 0 days"
-            pass
-        regex_match = re.search("\\d+", host_remaining_days)
-        if regex_match is None:
-            raise Exception("Expiration days label does not match the expected pattern in iteration: {iteration}")
-        expiration_days = int(regex_match.group(0))
-        return expiration_days
+      if self.__updateHost(hostBtn, hostName):
+        count += 1
+      
+      iteration += 1
+    self.browser.save_screenshot("results.png")
+    logging.info(f"Confirmed hosts: {count}")
 
-    @staticmethod
-    def get_host_link(host, iteration):
-        return host.find_element_by_xpath(".//a[@class='link-info cursor-pointer']")
+    return True
 
-    @staticmethod
-    def get_host_button(host, iteration):
-        return host.find_element_by_xpath(".//following-sibling::td[4]/button[contains(@class, 'btn')]")
+  def __openHostsPage(self):
+    try:
+      logging.info(f"Opening {HOST_URL}...")
+      self.browser.get(HOST_URL)
+    except TimeoutException as e:
+      self.browser.save_screenshot("timeout.png")
+      logging.error(f"Failed to open \"{HOST_URL}\" (Timeout: {str(e)})")
 
-    def get_hosts(self):
-        host_tds = self.browser.find_elements_by_xpath("//td[@data-title=\"Host\"]")
-        if len(host_tds) == 0:
-            raise Exception("No hosts or host table rows not found")
-        return host_tds
+  def __updateHost(self, hostBtn: WebElement, hostName: str) -> bool:
+    if hostBtn == None:
+      logging.info(f"Host: {hostName} do not need to update")
+      return False
+    
+    hostBtn.click()
+    logging.info(f"Host: {hostName} has been updated.")
+    time.sleep(3)
 
-    def run(self):
-        rc = 0
-        self.logger.log(f"Debug level: {self.debug}")
-        try:
-            self.login()
-            if not self.update_hosts():
-                rc = 3
-        except Exception as e:
-            self.logger.log(str(e))
-            self.browser.save_screenshot("exception.png")
-            subprocess.call(['/usr/local/bin/noip-renew-skd.sh', "*", "*", "False"])
-            rc = 2
-        finally:
-            self.browser.quit()
-        return rc
+    intervention = False
+    try:
+      if self.browser.find_elements(By.XPATH, "//h2[@class='big']")[0].text == "Upgrade Now":
+        intervention = True
+    except:
+      pass
 
+    if intervention:
+      raise Exception("Manual intervention required. Upgrade text detected.")
 
-def main(argv=None):
-    noip_username, noip_password, debug,  = get_args_values(argv)
-    return (Robot(noip_username, noip_password, debug)).run()
+    self.browser.save_screenshot(f"{hostName}_success.png")
 
+  @staticmethod
+  def __fetchHostExpirationDays(host: 'WebElement', iteration):
+    matches = host.find_elements(By.XPATH, ".//a[@class='no-link-style']")
+    if not len(matches): return 0
+    return int(re.search(r"\d+", matches[0]))
 
-def get_args_values(argv):
-    if argv is None:
-        argv = sys.argv
-    if len(argv) < 3:
-        print(f"Usage: {argv[0]} <noip_username> <noip_password> [<debug-level>] ")
-        sys.exit(1)
+  @staticmethod
+  def __fetchHostLink(host: 'WebElement', iteration):
+    return host.find_element(By.XPATH, r".//a[@class='link-info cursor-pointer']")
 
-    noip_username = argv[1]
-    noip_password = argv[2]
-    debug = 1
-    if len(argv) > 3:
-        debug = int(argv[3])
-    return noip_username, noip_password, debug
+  @staticmethod
+  def __fetchHostButton(host: 'WebElement', iteration):
+    try: 
+      return host.find_element(By.XPATH, r".//following-sibling::td[4]/button[contains(@class, 'btn')]")
+    except:
+      logging.info("Host \"confirm\" button not found")
+      return None 
 
+  def fetchHosts(self):
+    host_tds = self.browser.find_elements(By.XPATH, "//td[@data-title=\"Host\"]")
+    if len(host_tds) == 0:
+      raise Exception("No hosts or host table rows not found")
+    return host_tds
 
-if __name__ == "__main__":
-    sys.exit(main())
+  def renew(self):
+    self.login()
+    self.updateHosts()
+    self.browser.quit()
+
+def main():
+  parser = ArgumentParser()
+
+  parser.add_argument("-u", "--username")
+  parser.add_argument("-p", "--password")
+  parser.add_argument("-t", "--token-path", default=".\\token.json")
+  parser.add_argument("-e", "--environment-variable", action='store_true')
+  parser.add_argument("-r", "--max-retry", default=30)
+
+  args = parser.parse_args()
+
+  if not ( (args.username and args.password) or (args.environment_variable) ):
+    if not (args.username or args.password or args.environment_variable):
+      parser.error("Please provide your login information with [\"-u\" and \"-p\"] or [\"-e\"] ")
+
+    if args.password ^ args.username: 
+      parser.error("Please provide both username and password")
+    
+  token = args.token_path if not (args.environment_variable) else None
+  username = args.username if (args.username) else os.environ.get("USERNAME")
+  password = args.password if (args.password) else os.environ.get("PASSWORD")
+
+  if not (username and password):
+    parser.error("Environment variables for username and password not found")
+
+  return Robot(username, password, token).renew()
+
+if __name__ == "__main__": sys.exit(main())
