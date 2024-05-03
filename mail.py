@@ -41,14 +41,13 @@ def buildService(token: str) -> Resource:
     logging.info("Environment variable: \"token\" found, using it to login...")
     data = json.loads(os.environ["token"])
     creds = Credentials.from_authorized_user_info(data, SCOPES)
-
-    # If there are no (valid) credentials available, let the user log in.
-    if not creds: return logging.error("Token is not available")
-    if not creds.valid: return logging.error("Token is invaild")
   
   elif os.path.exists(token):
     logging.info(f"File: \"{token}\" found, using it to login...")
     creds = Credentials.from_authorized_user_file(token, SCOPES)
+    # If there are no (valid) credentials available, let the user log in.
+    if not creds: return logging.error("Token is not available")
+    if not creds.valid: return logging.error("Token is invaild")
 
   # Call the Gmail API
   return build("gmail", "v1", credentials=creds)
