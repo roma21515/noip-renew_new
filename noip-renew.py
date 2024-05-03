@@ -21,6 +21,8 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webelement import WebElement
+from webdriver_manager.chrome import ChromeDriverManager
+
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -49,7 +51,7 @@ class Robot:
     options.add_argument(f"user-agent={USER_AGENT}")
     if 'https_proxy' in os.environ:
       options.add_argument("proxy-server=" + os.environ['https_proxy'])
-    browser = webdriver.Chrome(options=options)
+    browser = webdriver.Chrome(ChromeDriverManager.install(), options=options)
     # browser.delete_all_cookies()
     browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
     return browser
