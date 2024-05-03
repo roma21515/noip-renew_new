@@ -108,6 +108,7 @@ class Robot:
         element.send_keys(str(code)[index])
 
       self.browser.find_element(By.NAME, "submit").click()
+      time.sleep(10)
       # self.browser.save_screenshot("debug2.png")
       
   def updateHosts(self):
