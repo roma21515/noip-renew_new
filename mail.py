@@ -1,3 +1,4 @@
+import json
 import logging
 import os.path
 import re, time
@@ -40,7 +41,8 @@ def buildService(token: str) -> Resource:
 
   elif os.environ.get("token", False):
     logging.info("Environment variable: \"token\" found, using it to login...")
-    creds = Credentials.from_authorized_user_info(info=os.environ["token"])
+    data = json.loads(os.environ["token"])
+    creds = Credentials.from_authorized_user_info(info=data)
 
   # If there are no (valid) credentials available, let the user log in.
   if not creds or not creds.valid:
