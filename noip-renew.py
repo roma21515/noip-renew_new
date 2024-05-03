@@ -47,7 +47,7 @@ class Robot:
     options = webdriver.ChromeOptions()
     #added for Raspbian Buster 4.0+ versions. Check https://www.raspberrypi.org/forums/viewtopic.php?t=258019 for reference.
     options.add_argument("disable-features=VizDisplayCompositor")
-    # options.add_argument("headless")
+    options.add_argument("headless")
     options.add_argument("no-sandbox") # need when run in docker
     # options.add_argument("window-size=1200x800")
     options.add_argument(f"user-agent={USER_AGENT}")
