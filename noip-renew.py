@@ -22,8 +22,8 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webelement import WebElement
 
-# from selenium.webdriver.support.ui import WebDriverWait
-# from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
@@ -47,7 +47,7 @@ class Robot:
     options = webdriver.ChromeOptions()
     #added for Raspbian Buster 4.0+ versions. Check https://www.raspberrypi.org/forums/viewtopic.php?t=258019 for reference.
     options.add_argument("disable-features=VizDisplayCompositor")
-    options.add_argument("headless")
+    # options.add_argument("headless")
     options.add_argument("no-sandbox") # need when run in docker
     # options.add_argument("window-size=1200x800")
     options.add_argument(f"user-agent={USER_AGENT}")
@@ -72,9 +72,6 @@ class Robot:
 
     # old_url = str(self.browser.current_url)
     self.browser.find_element(By.ID, "clogs-captcha-button").click()
-
-    # wait = WebDriverWait(self.browser, 30)
-    # wait.until(lambda driver: driver.current_url != old_url)
 
     if "noip.com/2fa/verify" in self.browser.current_url:
       attempts = 0
@@ -117,7 +114,8 @@ class Robot:
     count = 0
 
     self.__openHostsPage()
-    time.sleep(1)
+    
+
     iteration = 1
     next_renewal = []
 
@@ -140,12 +138,12 @@ class Robot:
     return True
 
   def __openHostsPage(self):
-    try:
-      logging.info(f"Opening {HOST_URL}...")
-      self.browser.get(HOST_URL)
-    except TimeoutException as e:
-      self.browser.save_screenshot("timeout.png")
-      logging.error(f"Failed to open \"{HOST_URL}\" (Timeout: {str(e)})")
+    logging.info(f"Opening {HOST_URL}...")
+    self.browser.get(HOST_URL)
+    wait = WebDriverWait(self.browser, 30)
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME,'table-striped-row')))
+    # print("I wanna close")
+    # time.sleep(1000)
 
   def __updateHost(self, hostBtn: WebElement, hostName: str) -> bool:
     if hostBtn == None:
