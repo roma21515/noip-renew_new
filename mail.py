@@ -38,9 +38,9 @@ def buildService(token: str) -> Resource:
     logging.info("File: \"token.json\" found, using it to login...")
     creds = Credentials.from_authorized_user_file("token.json", SCOPES)
 
-  elif os.environ.get("TOKEN", False):
+  elif os.environ.get("token", False):
     logging.info("Environment variable: \"token\" found, using it to login...")
-    creds = Credentials.from_authorized_user_info(info=os.environ["TOKEN"])
+    creds = Credentials.from_authorized_user_info(info=os.environ["token"])
 
   # If there are no (valid) credentials available, let the user log in.
   if not creds or not creds.valid:

@@ -205,8 +205,8 @@ def main():
       parser.error("Please provide both username and password")
     
   token = args.token_path if not (args.environment_variable) else None
-  username = args.username if (args.username) else os.environ.get("USERNAME")
-  password = args.password if (args.password) else os.environ.get("PASSWORD")
+  username = args.username if (args.username) else os.environ.get("username")
+  password = args.password if (args.password) else os.environ.get("password")
 
   if not (username and password):
     parser.error("Environment variables for username and password not found")
