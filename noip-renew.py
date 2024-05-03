@@ -51,7 +51,7 @@ class Robot:
     options.add_argument(f"user-agent={USER_AGENT}")
     if 'https_proxy' in os.environ:
       options.add_argument("proxy-server=" + os.environ['https_proxy'])
-    browser = webdriver.Chrome(ChromeDriverManager.install(), options=options)
+    browser = webdriver.Chrome(ChromeDriverManager().install(), options=options)
     # browser.delete_all_cookies()
     browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
     return browser
