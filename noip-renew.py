@@ -46,7 +46,7 @@ class Robot:
     options.add_argument("disable-features=VizDisplayCompositor")
     options.add_argument("headless")
     options.add_argument("no-sandbox") # need when run in docker
-    # options.add_argument("window-size=1200x800")
+    options.add_argument("window-size=1200x800")
     options.add_argument(f"user-agent={USER_AGENT}")
     if 'https_proxy' in os.environ:
       options.add_argument("proxy-server=" + os.environ['https_proxy'])
@@ -97,16 +97,18 @@ class Robot:
         resendBtn = self.browser.find_element(By.ID, "resend")
         if (resendBtn.is_enabled()) : resendBtn.click()
 
-      logging.info(f"Successfully got verification code !")
+      logging.info(f"Successfully got the verification code !")
       input2fa = self.browser.find_element(By.ID, "otp-input").find_elements(By.TAG_NAME, "input")
       
       for index, element in enumerate(input2fa):
         element.send_keys(str(code)[index])
 
+      logging.info(f"Current login URL = {self.browser.current_url}")
       self.browser.find_element(By.NAME, "submit").click()
       # self.browser.save_screenshot("debug2.png")
     
-    # Wait for dashboard to load 
+    # Wait for dashboard to load
+    logging.info(f"Current wait URL = {self.browser.current_url}")
     WebDriverWait(self.browser, 30).until(EC.presence_of_element_located((By.ID, "app")))
       
   def updateHosts(self):
