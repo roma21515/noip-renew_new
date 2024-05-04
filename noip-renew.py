@@ -112,13 +112,10 @@ class Robot:
     try:
       WebDriverWait(self.browser, 30).until(EC.presence_of_element_located((By.ID, "app")))
     except TimeoutException:
-      logging.error("Cannot load dashboard page, login may not success")
-      shot = self.browser.get_screenshot_as_base64()
-      print(shot)
+      return logging.error("Cannot load dashboard page, login may not success")
 
-      return
-    
     logging.info("Login successfuly")
+    return True
 
   def updateHosts(self):
     count = 0
