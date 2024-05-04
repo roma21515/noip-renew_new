@@ -12,7 +12,7 @@ env:
 
 jobs:
   deploy:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Install Checkout@v3
         uses: actions/checkout@v3

@@ -51,7 +51,7 @@ class Robot:
     if 'https_proxy' in os.environ:
       options.add_argument("proxy-server=" + os.environ['https_proxy'])
     browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
-    # browser.delete_all_cookies()
+    
     browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
 
     self.browser = browser
@@ -60,15 +60,12 @@ class Robot:
     logging.info(f"Opening {LOGIN_URL}...")
     self.browser.get(LOGIN_URL)
 
-    # self.browser.save_screenshot("debug1.png")
-
     logging.info("Logging in...")
     ele_usr = self.browser.find_element(By.NAME ,"username")
     ele_pwd = self.browser.find_element(By.NAME, "password")
     ele_usr.send_keys(self.username)
     ele_pwd.send_keys(self.password)
 
-    # old_url = str(self.browser.current_url)
     self.browser.find_element(By.ID, "clogs-captcha-button").click()
 
     if "noip.com/2fa/verify" in self.browser.current_url:
@@ -105,13 +102,11 @@ class Robot:
 
       logging.info(f"Current login URL = {self.browser.current_url}")
       self.browser.find_element(By.NAME, "submit").click()
-      # self.browser.save_screenshot("debug2.png")
     
-    # Wait for dashboard to load
-    logging.info(f"Current wait URL = {self.browser.current_url}")
-    try:
-      self.browser.refresh()
-      logging.info(f"Current wait URL = {self.browser.current_url}")
+    logging.debug(f"Current wait URL = {self.browser.current_url}")
+    self.browser.refresh() # Refresh page to make sure page be redirect
+    try: # Wait for dashboard to load
+      logging.debug(f"Current wait URL = {self.browser.current_url}")
       WebDriverWait(self.browser, 30).until(EC.presence_of_element_located((By.ID, "app")))
     except TimeoutException:
       return logging.error("Cannot load dashboard page, login may not success")
