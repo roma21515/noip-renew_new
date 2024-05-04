@@ -7,12 +7,6 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build, Resource
 
-logging.basicConfig(
-  level = logging.INFO,
-  format = '[%(asctime)s] [%(levelname)s] %(message)s',
-  datefmt = '%Y/%m/%d %I:%M:%S'
-)
-
 # If modifying these scopes, delete the file token.json.
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
@@ -78,7 +72,13 @@ def verifyCode(service: Resource, timestamp: int) -> int:
 
     return re.findall(r"\d{6}", subject[0]["value"])[0] # Return matched code
 
-def fetchCode():
+def main():
+  logging.basicConfig(
+    level = logging.INFO,
+    format = '[%(asctime)s] [%(levelname)s] %(message)s',
+    datefmt = '%Y/%m/%d %I:%M:%S'
+  )
+  
   attempts = 0
   now = int(time.time())
   service = buildService()
@@ -103,4 +103,4 @@ def fetchCode():
     
     time.sleep(5) # Sleep for 5 seconds to prevent 429
 
-if __name__ == "__main__": fetchCode()
+if __name__ == "__main__": main()

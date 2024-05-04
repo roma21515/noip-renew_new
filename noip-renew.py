@@ -109,8 +109,17 @@ class Robot:
     
     # Wait for dashboard to load
     logging.info(f"Current wait URL = {self.browser.current_url}")
-    WebDriverWait(self.browser, 30).until(EC.presence_of_element_located((By.ID, "app")))
-      
+    try:
+      WebDriverWait(self.browser, 30).until(EC.presence_of_element_located((By.ID, "app")))
+    except TimeoutException:
+      logging.error("Cannot load dashboard page, login may not success")
+      shot = self.browser.get_screenshot_as_base64()
+      print(shot)
+
+      return
+    
+    logging.info("Login successfuly")
+
   def updateHosts(self):
     count = 0
     iteration = 1
@@ -199,6 +208,12 @@ class Robot:
     self.browser.quit()
 
 def main():
+  logging.basicConfig(
+    level = logging.INFO,
+    format = '[%(asctime)s] [%(levelname)s] %(message)s',
+    datefmt = '%Y/%m/%d %I:%M:%S'
+  )
+
   parser = ArgumentParser()
 
   parser.add_argument("-u", "--username")
