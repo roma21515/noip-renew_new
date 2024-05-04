@@ -40,10 +40,7 @@ class Robot:
     self.token = token
     self.username = username
     self.password = password
-    self.browser = self.init_browser()
 
-  @staticmethod
-  def init_browser():
     options = webdriver.ChromeOptions()
     #added for Raspbian Buster 4.0+ versions. Check https://www.raspberrypi.org/forums/viewtopic.php?t=258019 for reference.
     options.add_argument("disable-features=VizDisplayCompositor")
@@ -56,7 +53,8 @@ class Robot:
     browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
     # browser.delete_all_cookies()
     browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
-    return browser
+
+    self.browser = browser
 
   def login(self):
     logging.info(f"Opening {LOGIN_URL}...")
@@ -92,32 +90,31 @@ class Robot:
         logging.info(f"Attempting to get verification code from Gmail API ({attempts})")
         code = verifyCode(service, now)
 
-        if code:
-          logging.info(f"Successfully got verification code !")
-          break
-        
+        if code: break # Exit check loop if code is vaild
         time.sleep(5) # Prevent too many requests 
         
         # Click "resend email" button if it's enabled
         resendBtn = self.browser.find_element(By.ID, "resend")
         if (resendBtn.is_enabled()) : resendBtn.click()
 
+      logging.info(f"Successfully got verification code !")
       input2fa = self.browser.find_element(By.ID, "otp-input").find_elements(By.TAG_NAME, "input")
       
       for index, element in enumerate(input2fa):
         element.send_keys(str(code)[index])
 
       self.browser.find_element(By.NAME, "submit").click()
-      time.sleep(10)
       # self.browser.save_screenshot("debug2.png")
+    
+    # Wait for dashboard to load 
+    WebDriverWait(self.browser, 30).until(EC.presence_of_element_located((By.ID, "app")))
       
   def updateHosts(self):
     count = 0
-    self.__openHostsPage()
-
     iteration = 1
     next_renewal = []
 
+    self.__openHostsPage()
     hosts = self.fetchHosts()
     for host in hosts:
       hostLink = self.__fetchHostLink(host, iteration) # This is for if we wanted to modify our Host IP.
@@ -139,11 +136,12 @@ class Robot:
   def __openHostsPage(self):
     logging.info(f"Opening {HOST_URL}...")
     self.browser.get(HOST_URL)
-    try:
-      wait = WebDriverWait(self.browser, 30)
-      wait.until(EC.presence_of_element_located((By.CLASS_NAME,'table-striped-row')))
+    try: 
+      WebDriverWait(self.browser, 30).until(EC.presence_of_element_located((By.CLASS_NAME,'table-striped-row')))
     except TimeoutException:
-      print(self.browser.current_url)
+      logging.error("Timeout to wait for element \"table-striped-row\", host page may not load properly")
+      return
+    logging.info("Host page loaded successfully")
 
     # print("I wanna close")
     # time.sleep(1000)
@@ -195,7 +193,6 @@ class Robot:
 
   def renew(self):
     self.login()
-    time.sleep(5)
     self.updateHosts()
     self.browser.quit()
 
