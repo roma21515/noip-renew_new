@@ -110,6 +110,8 @@ class Robot:
     # Wait for dashboard to load
     logging.info(f"Current wait URL = {self.browser.current_url}")
     try:
+      self.browser.refresh()
+      logging.info(f"Current wait URL = {self.browser.current_url}")
       WebDriverWait(self.browser, 30).until(EC.presence_of_element_located((By.ID, "app")))
     except TimeoutException:
       return logging.error("Cannot load dashboard page, login may not success")
