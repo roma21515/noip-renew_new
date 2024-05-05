@@ -28,7 +28,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
 
-from mail import buildService, verifyCode
+from mail import buildService, fetchCode
 
 LOGIN_URL = "https://www.noip.com/login"
 HOST_URL = "https://my.noip.com/dynamic-dns"
@@ -48,13 +48,12 @@ class Robot:
     options.add_argument("no-sandbox") # need when run in docker
     options.add_argument("window-size=1200x800")
     options.add_argument(f"user-agent={USER_AGENT}")
-    if 'https_proxy' in os.environ:
-      options.add_argument("proxy-server=" + os.environ['https_proxy'])
-    browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
-    
-    browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
 
-    self.browser = browser
+    if 'https_proxy' in os.environ:
+      options.add_argument(f"proxy-server={os.environ['https_proxy']}")
+
+    self.browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    self.browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
 
   def login(self):
     logging.info(f"Opening {LOGIN_URL}...")
@@ -85,7 +84,7 @@ class Robot:
           return None
         
         logging.info(f"Attempting to get verification code from Gmail API ({attempts})")
-        code = verifyCode(service, now)
+        code = fetchCode(service, now)
 
         if code: break # Exit check loop if code is vaild
         time.sleep(5) # Prevent too many requests 
@@ -116,23 +115,21 @@ class Robot:
 
   def updateHosts(self):
     count = 0
-    iteration = 1
     next_renewal = []
 
     self.__openHostsPage()
     hosts = self.fetchHosts()
     for host in hosts:
-      hostLink = self.__fetchHostLink(host, iteration) # This is for if we wanted to modify our Host IP.
-      hostBtn = self.__fetchHostButton(host, iteration) # This is the button to confirm our free host
-      expDays = self.__fetchHostExpirationDays(host, iteration)
+      hostLink = self.fetchHostLink(host) # This is for if we wanted to modify our Host IP.
+      hostBtn = self.fetchHostButton(host) # This is the button to confirm our free host
+      expDays = self.fetchHostExpirationDays(host)
       hostName = hostLink.text
       next_renewal.append(expDays)
       logging.info(f"{hostName} expires in {str(expDays)} days")
 
-      if self.__updateHost(hostBtn, hostName):
+      if self.updateHost(hostBtn, hostName):
         count += 1
       
-      iteration += 1
     self.browser.save_screenshot("results.png")
     logging.info(f"Confirmed hosts: {count}")
 
@@ -151,7 +148,7 @@ class Robot:
     # print("I wanna close")
     # time.sleep(1000)
 
-  def __updateHost(self, hostBtn: WebElement, hostName: str) -> bool:
+  def updateHost(self, hostBtn: WebElement, hostName: str) -> bool:
     if hostBtn == None:
       logging.info(f"Host: {hostName} do not need to update")
       return False
@@ -173,22 +170,20 @@ class Robot:
     self.browser.save_screenshot(f"{hostName}_success.png")
 
   @staticmethod
-  def __fetchHostExpirationDays(host: 'WebElement', iteration):
+  def fetchHostExpirationDays(host: 'WebElement'):
     matches = host.find_elements(By.XPATH, ".//a[@class='no-link-style']")
     if not len(matches): return 0
     return int(re.search(r"\d+", matches[0]))
 
   @staticmethod
-  def __fetchHostLink(host: 'WebElement', iteration):
+  def fetchHostLink(host: 'WebElement'):
     return host.find_element(By.XPATH, r".//a[@class='link-info cursor-pointer']")
 
   @staticmethod
-  def __fetchHostButton(host: 'WebElement', iteration):
-    try: 
-      return host.find_element(By.XPATH, r".//following-sibling::td[4]/button[contains(@class, 'btn')]")
-    except:
-      logging.info("Host \"confirm\" button not found")
-      return None 
+  def fetchHostButton(host: 'WebElement'):
+    button = host.find_elements(By.XPATH, r".//following-sibling::td[4]/button[contains(@class, 'btn')]")
+    if not len(button): return logging.info("Host \"confirm\" button not found")
+    return button[0]
 
   def fetchHosts(self):
     host_tds = self.browser.find_elements(By.XPATH, "//td[@data-title=\"Host\"]")
@@ -202,19 +197,13 @@ class Robot:
     self.browser.quit()
 
 def main():
-  logging.basicConfig(
-    level = logging.INFO,
-    format = '[%(asctime)s] [%(levelname)s] %(message)s',
-    datefmt = '%Y/%m/%d %I:%M:%S'
-  )
-
   parser = ArgumentParser()
 
-  parser.add_argument("-u", "--username")
-  parser.add_argument("-p", "--password")
-  parser.add_argument("-t", "--token-path", default="token.json")
-  parser.add_argument("-e", "--environment-variable", action='store_true')
-  parser.add_argument("-r", "--max-retry", default=30)
+  parser.add_argument("-u", "--username", help="Your No-IP login account username")
+  parser.add_argument("-p", "--password", help="Your No-IP login account password")
+  parser.add_argument("-t", "--token-path", help="Path to your Gmail API token json file", default="token.json")
+  parser.add_argument("-e", "--environment-variable", help="If this flag be added, username; password; token arguments will not required", action='store_true')
+  parser.add_argument("-v", "--verbose", help="Increase output verbosity", action="store_true")
 
   args = parser.parse_args()
 
@@ -228,6 +217,12 @@ def main():
   token = args.token_path if not args.environment_variable else None
   username = args.username if (args.username) else os.environ.get("username")
   password = args.password if (args.password) else os.environ.get("password")
+
+  logging.basicConfig(
+    datefmt = '%Y/%m/%d %I:%M:%S',
+    format = '[%(asctime)s] [%(levelname)s] %(message)s',
+    level = logging.DEBUG if args.verbose else logging.INFO
+  )
 
   if not (username and password):
     parser.error("Environment variables for username and password not found")
