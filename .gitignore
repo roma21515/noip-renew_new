@@ -157,3 +157,5 @@ credentials.json
 
 # Photos
 *.png
+
+.vscode

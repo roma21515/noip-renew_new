@@ -2,8 +2,9 @@ from argparse import ArgumentParser
 import json, logging, sys, re, os.path
 
 from google.oauth2.credentials import Credentials
-from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
 from googleapiclient.discovery import build, Resource
+from google_auth_oauthlib.flow import InstalledAppFlow
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = [
@@ -31,6 +32,8 @@ def buildService(token: str) -> Resource:
     logging.info(f"File: \"{token}\" found, using it to login...")
     creds = Credentials.from_authorized_user_file(token, SCOPES)
 
+  if creds and creds.expired and creds.refresh_token:
+    creds.refresh(Request())
   # Call the Gmail API
   return build("gmail", "v1", credentials=creds)
 

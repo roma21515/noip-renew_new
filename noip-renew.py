@@ -44,7 +44,7 @@ class Robot:
     options = webdriver.ChromeOptions()
     #added for Raspbian Buster 4.0+ versions. Check https://www.raspberrypi.org/forums/viewtopic.php?t=258019 for reference.
     options.add_argument("disable-features=VizDisplayCompositor")
-    options.add_argument("headless")
+    # options.add_argument("headless")
     options.add_argument("no-sandbox") # need when run in docker
     options.add_argument("window-size=1200x800")
     options.add_argument(f"user-agent={USER_AGENT}")
@@ -52,7 +52,9 @@ class Robot:
     if 'https_proxy' in os.environ:
       options.add_argument(f"proxy-server={os.environ['https_proxy']}")
 
-    self.browser = webdriver.Chrome(service=ChromeService(ChromeDriverManager().install()), options=options)
+    path = ChromeDriverManager(driver_version="120.0.6099.109").install()
+    options.binary_location = path
+    self.browser = webdriver.Chrome(options=options)
     self.browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
 
   def login(self):
@@ -173,7 +175,7 @@ class Robot:
   def fetchHostExpirationDays(host: 'WebElement'):
     matches = host.find_elements(By.XPATH, ".//a[@class='no-link-style']")
     if not len(matches): return 0
-    return int(re.search(r"\d+", matches[0]))
+    return int(re.search(r"\d+", matches[0].text).group())
 
   @staticmethod
   def fetchHostLink(host: 'WebElement'):
@@ -181,7 +183,7 @@ class Robot:
 
   @staticmethod
   def fetchHostButton(host: 'WebElement'):
-    button = host.find_elements(By.XPATH, r".//following-sibling::td[4]/button[contains(@class, 'btn')]")
+    button = host.find_elements(By.XPATH, r"""//*[@id="host-panel"]/table/tbody/tr/td[6]/button[1]""")
     if not len(button): return logging.info("Host \"confirm\" button not found")
     return button[0]
 
