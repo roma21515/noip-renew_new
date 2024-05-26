@@ -56,7 +56,7 @@ class Robot:
     latest_version = requests.get("https://chromedriver.storage.googleapis.com/LATEST_RELEASE_114")
     path = ChromeDriverManager(driver_version=latest_version.text).install()
     options.binary_location = path
-    self.browser = webdriver.Chrome(options=options)
+    self.browser = webdriver.Chrome(options=options, service=ChromeService(path))
     self.browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
 
   def login(self):
