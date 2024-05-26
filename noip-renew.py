@@ -44,19 +44,22 @@ class Robot:
 
     options = webdriver.ChromeOptions()
     #added for Raspbian Buster 4.0+ versions. Check https://www.raspberrypi.org/forums/viewtopic.php?t=258019 for reference.
-    options.add_argument("disable-features=VizDisplayCompositor")
-    options.add_argument("headless")
-    options.add_argument("no-sandbox") # need when run in docker
+    # options.add_argument("disable-features=VizDisplayCompositor")
     options.add_argument("window-size=1200x800")
     options.add_argument(f"user-agent={USER_AGENT}")
+    options.add_argument("--no-sandbox") # need when run in docker
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--headless")  # If running in a headless environment
+    options.add_argument("--disable-gpu")  # If hardware acceleration is causing issues
+    # options.add_argument("--verbose")
 
     if 'https_proxy' in os.environ:
       options.add_argument(f"proxy-server={os.environ['https_proxy']}")
 
-    latest_version = requests.get("https://chromedriver.storage.googleapis.com/LATEST_RELEASE_114")
-    path = ChromeDriverManager(driver_version=latest_version.text).install()
-    options.binary_location = path
-    self.browser = webdriver.Chrome(options=options, service=ChromeService(path))
+    # latest_version = requests.get("https://chromedriver.storage.googleapis.com/LATEST_RELEASE")
+    # path = ChromeDriverManager(driver_version=latest_version.text).install()
+
+    self.browser = webdriver.Chrome(options=options, service=ChromeService(log_output="chromedriver.log"))
     self.browser.set_page_load_timeout(90) # Extended timeout for Raspberry Pi.
 
   def login(self):
