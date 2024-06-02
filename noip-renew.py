@@ -22,17 +22,19 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.remote.webelement import WebElement
+
 from win11toast import toast
+
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
+
 from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.firefox.service import Service as FirefoxService
+
 from mail import buildService, fetchCode
 
-USERNAME = "my login"
-PASSWORD = "my password"
 
 LOGIN_URL = "https://www.noip.com/login"
 HOST_URL = "https://my.noip.com/dynamic-dns"
