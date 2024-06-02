@@ -16,7 +16,7 @@
 import logging
 import re, os, sys, time
 from argparse import ArgumentParser
-import shutil
+
 import requests
 from selenium import webdriver
 from selenium.webdriver.common.by import By
